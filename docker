@@ -1,0 +1,189 @@
+Docker - Reference Sheet
+
+Getting Started
+Useful Links
+Install:
+Docker Install: https://docs.docker.com/get-docker/
+Docs:
+Docker tutorial: https://docs.docker.com/get-started/
+Docker Compose tutorial: https://docs.docker.com/compose/gettingstarted/
+Actix web with docker: https://dev.to/sergeyzenchenko/actix-web-in-docker-how-to-build-small-and-secure-images-2mjd
+Style Guides:
+
+Basic Concepts
+Docker is an open source platform for building, deploying, and managing containerized applications.
+Dockerfile: file which specifies how to build a docker image
+Image: template for running docker containers
+Container: standardised executable components combining application source code with the operating system (OS) libraries and dependencies required to run that code in any environment. 
+advantages of containers:
+Lighter weight: Unlike VMs, containers don’t carry the payload of an entire OS instance and hypervisor; they include only the OS processes and dependencies necessary to execute the code. Container sizes are measured in megabytes (vs. gigabytes for some VMs), make better use of hardware capacity, and have faster startup times.
+Greater resource efficiency: With containers, you can run several times as many copies of an application on the same hardware as you can using VMs. This can reduce your cloud spending.
+Improved developer productivity: Compared to VMs, containers are faster and easier to deploy, provision and restart. This makes them ideal for use in continuous integration and continuous delivery (CI/CD) pipelines and a better fit for development teams adopting Agile and DevOps practices.
+
+Hello World
+To print “Hello world!” to the console in Docker run the following command in the terminal:
+docker run hello-world
+Useful Commands
+Start the docker service (Linux)
+sudo service docker start
+
+Build  an image
+docker build -t <name-of-container>
+
+Run an image as a container
+docker run <image-name>
+
+Run an image as a container and port forward to docker container
+docker run -p <local-port-num>:<container-port-num> <image-name>
+
+Run an image in background (detached mode)
+docker run -d <image-name>
+
+Run an image in background (detached mode)
+docker run --name <container-name> <image-name>
+
+View Running Containers
+docker ps
+
+Remove containers
+docker -rm <container-name>
+
+Cheatsheet
+https://dockerlabs.collabnix.com/docker/cheatsheet/
+
+
+
+Dockerfiles
+Sets a base image
+FROM <base-image>
+FROM <base-image> AS <alias>
+
+executes a command (shell form and exec form respectively)
+RUN <command>
+RUN ["<command1>", "<command2>"]
+
+Copy files and directories to your Docker image 
+COPY <src> <dst>
+
+Add files and directories to your Docker image (Similar to COPY but ADD has additional features like pulling files from url sources, recognizing and handling a lot more file formats than the later one)
+ADD <src> <dst>
+
+Define environment variables
+ENV <value>
+
+Define the working directory for your project
+WORKDIR <path>
+
+Expose a port on the container
+EXPOSE <port-num>
+
+Specify which component is to be run by your image on execution of the container.
+Note: should only be one CMD instruction in a Dockerfile. If more than one CMD instruction is present then only the last one will be used during execution.
+CMD ["<command1>", "<command2>"]
+
+Specify the executable which should run when a container is started from a Docker image
+When the main executable is used in this instruction then the parameters provided in CMD instruction will be added as parameters to the ENTRYPOINT instruction.
+ENTRYPOINT ["<command1>", "<command2>"]
+
+Set the Author field of the generated images
+MAINTAINER <name>
+
+Multi-stage builds
+Multi-stage builds allow you to use multiple FROM statements in your Dockerfile. Each FROM instruction can use a different base, and each of them begins a new stage of the build. You can selectively copy artefacts from one stage to another, leaving behind everything you don’t want in the final image.
+- See https://docs.docker.com/develop/develop-images/multistage-build/
+- Example: 
+# Build stage
+FROM rust:latest AS build
+WORKDIR /usr/src/hello-world
+COPY . .
+RUN cargo build --release
+# Distroless stage
+FROM gcr.io/distroless/cc-debian10
+COPY --from=build /usr/src/hello-world/target/release/hello-world .
+CMD ["./hello-world"]
+
+Distroless images: images that contain only your application and its runtime dependencies. They do not contain package managers, shells or any other programs you would expect to find in a standard Linux distribution. 
+- See https://github.com/GoogleContainerTools/distroless
+- The word “distroless” is misleading, distroless images are based off distributions
+- Removes unnecessary packages
+- Helps systems be more secure - the less things running, the smaller the security footprint.
+- Helps reduce CPU and memory usage - less things using this up
+- Helps dependency management - less things to depend on
+- Distroless images are very small. The smallest distroless image, gcr.io/distroless/static-debian11, is around 2 MiB. That's about 50% of the size of alpine (~5 MiB), and less than 2% of the size of debian (124 MiB).
+- distroless/cc-debian10: This image contains a minimal Linux, glibc runtime for “mostly-statically compiled” languages like Rust and D
+
+
+Docker Compose
+Compose is a tool for defining and running multi-container Docker applications. With Compose, you use a YAML file to configure your application’s services. Then, with a single command, you create and start all the services from your configuration. 
+- See https://docs.docker.com/compose/
+- Using Compose process:
+Define your app’s environment with a Dockerfile so it can be reproduced anywhere.
+Define the services that make up your app in docker-compose.yml so they can be run together in an isolated environment.
+Run docker compose up or docker-compose up and the Docker compose command starts and runs your containers.
+The container(s) will now be running.
+Run docker-compose down to stop and remove the running containers.
+- Example:
+version: "2.4"
+services:
+  web:
+    build: ./hello-world
+    ports:
+      - "8080:8080"
+
+YAML Types: Each compose property has one or multiple possible types. The different possibilities are a basic key:value, an array, or a dictionary.
+- Value
+- Syntax:
+key: value
+- Array
+- Syntax:
+key:
+ 	- value
+ 	- value
+
+- Dictionary
+- Syntax:
+master:
+ 	key: value
+ 	key: value
+
+Container properties: containers are specified under the services: property
+- build: value Build an image with the specified name by using the Dockerfile in the specified directory.
+- image: value  Use an image that is on the system or that can be downloaded from the docker hub.
+- container_name: value  Specify the container name, that the container will be accessible with.
+- volumes: array Create container volumes to persist data and to make certain directories available on the host system.
+	- See https://sefidian.com/2021/11/05/volumes-in-docker-compose-tutorial/
+- command: value Overwrite the start command of the container.
+- environment: dictionary/array Define environment variables to use inside of the container.
+- restart: value Specify a restart rule for the container. (no, always, on-failure, unless-stopped)
+- ports: array Define ports to expose to other containers and the host system.
+- expose: array Define ports to expose only to other containers.
+- depends_on: array Specify the build, start and stop order of the container.
+Postgres example
+- Documentation of postgres Docker image https://hub.docker.com/_/postgres/
+- Example: 
+version: "2.4"
+services:
+  db_server:
+	image: postgres
+	restart: always
+	environment:
+	# Specify a password for the database
+  	- POSTGRES_PASSWORD=password
+# Specify a user with superuser power and a database with the same name.
+  	- POSTGRES_USER=postgres
+	# Used to define a different name for the default database that is created when the image is first started.
+  	- POSTGRES_DB=test_db
+# used to define another location - like a subdirectory - for the database files. The default is /var/lib/postgresql/data. 
+  	- PGDATA=/var/lib/postgresql/data/pgdata
+	container_name: db_server
+	ports:
+	# Map a port Host:Container, allows us to conveniently access the database
+  	- 8002:5432
+	volumes:
+	- ./volume:/var/lib/postgresql/data
+
+
+
+
+
+
