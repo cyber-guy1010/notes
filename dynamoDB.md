@@ -1,0 +1,114 @@
+- Supports JSON, HTML and XML
+- Uses SSD storage
+- Eventually consistent
+    - Overall read performance can be better
+- `Items` = rows
+- `Attributes` = columns
+### DynamoDB Access Control
+- Authentication and access control is managed using IAM
+- `IAM Permissions` are used to create IAM users within account with specific permissions to access and create DynamoDB tables
+- `IAM Roles` temporary access to DynamoDB
+- `IAM Condition` used to restrict user access to own records
+    - Condition is added to IAM policy to allow access to items where partition key matches their user ID
+    - `dynamoDB:LeadingKeys` allows users to access only items where the partition key value matches their user ID
+### DynamoDB Indexes
+- `Secondary Index` query based on attribute that is not the primary key
+    - Fast queries on specific columns in the table
+    - Allows more flexible querying
+    - `Global Secondary Indexes` choose different partition key and sort key as index
+        - Can be created whenever 
+        - Example: 
+            - Partition key: email address
+            - Sort key: last log in date
+    - `Local Secondary Indexes` same partition key as your original table but different sort key
+        - can only be created when you are creating your table 
+        - Cannot be modified or removed later
+        - Example: 
+            - Partition key: userID
+            - Sort key: account creation date
+### DynamoDB Query vs Scan
+- `Query` finds items in a table based on primary key and distinct value to search for
+    - Optional sort key can be used to refine query
+    - Ascending order by default
+    - `ScanIndexForward` parameter set to `False` to reverse index to descending order
+        - Only applies to queries not scans
+    - Eventually consistent
+    - More efficient than a scan
+    - Improve performance by
+        - Set smaller page size
+            - Allows larger number of smaller operations which avoids throttling
+- `Scan` examines every item in the table
+    - By default, returns all data attributes
+    - `ProjectExpression` parameter used to refine scan to only return attributes you want
+    - Can use up provisioned throughput on a large table in just a single operation
+    - Improve performance by
+        - Use parallel scans to scan segments of a table in parallel
+        - Isolate scan operations to specific tables
+        - Set smaller page size
+### DynamoDB API Calls
+- [DynamoDB API Reference](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/dynamodb/index.html)
+- `CreateTable (create-table)` create new table
+- `PutItem (put-item)` add new item to table or replace an old item with a new one
+- `GetItem (get-item)` return set of attributes for an item with the given primary key
+    - `BatchGetItem` is used to get multiple items
+- `UpdateItem (update-item)` edit the attributes of existing item 
+- `UpdateTable (update-table)` modify table settings such as provisioned throughput
+- `ListTables (list-tables)` returns list of table in your account
+- `DescribeTable (describe-table)` returns info about the table such as current status, creation date, primary key, and indexes
+- `Scan (scan)` reads every item in a table and returns all items and attributes
+    - `FilterExpression` used to return fewer items
+- `Query (query)` queries the table based on partition key
+- `DeleteItem (delete-item)` delete item based on primary key
+- `DeleteTable (delete-table)` delete table and all of its items
+### DynamoDB Scaling
+- TODO merge with auto-scaling section
+- `Provisioned Throughput/ Provisioned Capacity` used when read and write requirements can be forecasted
+    - More control over costs
+    - `Write Capacity Units` = 1x 1KB write per second
+        - Needs to be increased if you are making too many writes
+    - `Read Capacity Unit` = 1x Strongly consistent 4KB read per second OR 2x eventually consistent 4KB reads per second
+        - Example: 80 strongly consistent reads per second
+            - 3KB / 4KB = 0.75
+            - Round up
+            - 80 RCU
+    - `ProvisionedThroughputExceededException` occurs when request rate is too high for provisioned read/write capacity for a table
+        - AWS SDK will retry until successful
+        - `Exponential Backoff` requester uses progressively longer waits between consecutive retries
+            - improved flow control
+            - 
+- `On-Demand Capacity` scales up and down based on activity of application
+    - Charged for reading, writing and storing data
+    - Good for unpredictable workloads
+    - Difficult to predict costs
+### DynamoDB Accelerator (DAX)
+- TODO merge with existing section
+- Reduces read load on DynamoDB tables
+    - May be able to reduce provisioned read capacity on tables
+- Elasticache is an alternative to DAX
+- Eventually consistent reads only
+- Up to 10x performance improvement
+- Millions of requests per second
+- Good for read-heavy and bursting read workloads
+    - Not suitable for write-intensive
+- Write-through caching service
+    - Data written to `DAX Cluster` and DynamoDB at same time
+### TTL
+- TODO add to TTL item
+- When item expires it is deleted within 48 hours
+- Must be enabled in table settings
+    - Need to select attribute that is used to specify `ExpirationTime`
+    - Takes up to 1 hour for TTL attribute to apply
+
+### DynamoDB Strams
+- TODO copy existing item and create new section
+- Logs are encrypted and stored for 24 hours
+- Near-real time 
+    - good for serverless 
+- Dedicated endpoint to access stream
+- By default, primary key is recorded
+- Can capture state of item before and after
+- Uses
+    - Auditing 
+    - Archiving
+    - Trigger an event, such as Lambda
+    - Replicate data across tables
